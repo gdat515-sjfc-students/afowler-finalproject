@@ -1,0 +1,634 @@
+---
+title: "MVP_Race"
+output:
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(ggplot2)
+library(rvest)
+library(tidyverse)
+library(magick)
+library(shiny)
+library(purrr)
+library(plotly)
+```
+
+NBA MVP Candidates
+==========================
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+```{r data prep}
+## JAMES HARDEN 2020 SEASON
+
+# read in table
+jhszn11 <- read_html("https://www.basketball-reference.com/players/h/hardeja01/gamelog/2020") %>%
+  html_nodes("#pgl_basic") %>%
+  html_table(fill = TRUE)
+
+# making it into a datframe form one row
+jhszn11_df <- jhszn11[[1]]
+
+# flling in coloums names
+colnames(jhszn11_df) <- str_replace_all(string = paste0(names(jhszn11_df), jhszn11_df[4, ]), 
+                                             pattern = " ", replacement = "-")
+
+# clean up playoff data by replacing "" with "0"
+jhszn11_df <- jhszn11_df %>%  
+  mutate_if(~ any(grep(pattern = "", x = .)), function(x){ifelse(x == "", 0, x)})
+
+
+# remove unwanted varibles
+jhszn11_df  <-  jhszn11_df %>%
+  select(., -Rk4, -G4, -`Age30-065`, -OppWAS,-GS1)
+
+# fix names of cloumns 
+colnames(jhszn11_df)[colnames(jhszn11_df)=="Date2019-10-30"] <- "Dates"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="GmSc46.8"] <- "GmSc"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="@"] <- "VS"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="W-(+1)"] <- "WL"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="MP37:30"] <- "MP"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="FG18"] <- "FG"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="FGA32"] <- "FGA"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="FG%.563"] <- "FGP"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="3P6"] <- "ThreeP"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="3PA14"] <- "ThreePA"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="3P%.429"] <- "ThreeFGP"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="FT17"] <- "FT"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="FTA18"] <- "FTA"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="FT%.944"] <- "FTP"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="ORB1"] <- "ORB"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="DRB2"] <- "DRB"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="TRB3"] <- "TRB"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="AST9"] <- "AST"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="STL1"] <- "STL"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="BLK0"] <- "BLK"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="TOV4"] <- "TOV"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="PF3"] <- "PF"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="PTS59"] <- "PTS"
+colnames(jhszn11_df)[colnames(jhszn11_df)=="+/-+6"] <- "PM"
+
+jhszn11_df$WL <- substring(jhszn11_df$WL, 1,1)
+
+# converting variables to intergers
+ jhszn11_df$PTS <- as.numeric(as.character(jhszn11_df$PTS))
+  jhszn11_df$TRB <- as.numeric(as.character(jhszn11_df$TRB))
+ jhszn11_df$AST <- as.numeric(as.character(jhszn11_df$AST))
+ jhszn11_df$STL <- as.numeric(as.character(jhszn11_df$STL))
+ jhszn11_df$FTP <- as.numeric(as.character(jhszn11_df$FTP))
+ jhszn11_df$ThreeFGP <- as.numeric(as.character(jhszn11_df$ThreeFGP))
+jhszn11_df$GmSc <- as.numeric(as.character(jhszn11_df$GmSc))
+ 
+# remove other unwanted varibles
+jhszn11_df  <-  jhszn11_df %>%
+  select(., -PF, -VS,  -NANA, -TmHOU)
+
+# removing unwanted rows
+jhszn_df <- jhszn11_df[-c(21,34,42,47,48),]
+
+# convert date column to date class
+ jhszn_df$Dates <- as.Date(jhszn_df$Dates)
+ 
+# reading in player image 
+harden <- image_read("https://a.espncdn.com/i/headshots/nba/players/full/3992.png")
+
+
+## Luka Dončić 2020 SEASON
+
+jhszn8 <- read_html("https://www.basketball-reference.com/players/d/doncilu01/gamelog/2020") %>%
+  html_nodes("#pgl_basic") %>%
+  html_table(fill = TRUE)
+
+# making it into a datframe form one row
+jhszn8_df <- jhszn8[[1]]
+
+# flling in coloums names
+colnames(jhszn8_df) <- str_replace_all(string = paste0(names(jhszn8_df), jhszn8_df[2, ]), 
+                                             pattern = " ", replacement = "-")
+
+# clean up playoff data by replacing "" with "0"
+jhszn8_df <- jhszn8_df %>%  
+  mutate_if(~ any(grep(pattern = "", x = .)), function(x){ifelse(x == "", 0, x)})
+
+# remove unwanted varibles
+jhszn8_df  <-  jhszn8_df %>%
+  select(., -Rk2, -G2, -`Age20-239`, -OppNOP,-GS1)
+
+# fix names of cloumns 
+colnames(jhszn8_df)[colnames(jhszn8_df)=="Date2019-10-25"] <- "Dates"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="GmSc24.7"] <- "GmSc"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="@"] <- "VS"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="W-(+7)"] <- "WL"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="MP37:41"] <- "MP"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="FG10"] <- "FG"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="FGA19"] <- "FGA"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="FG%.526"] <- "FGP"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="3P3"] <- "ThreeP"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="3PA9"] <- "ThreePA"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="3P%.333"] <- "ThreeFGP"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="FT2"] <- "FT"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="FTA2"] <- "FTA"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="FT%1.000"] <- "FTP"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="ORB1"] <- "ORB"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="DRB9"] <- "DRB"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="TRB10"] <- "TRB"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="AST10"] <- "AST"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="STL2"] <- "STL"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="BLK0"] <- "BLK"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="TOV3"] <- "TOV"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="PF1"] <- "PF"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="PTS25"] <- "PTS"
+colnames(jhszn8_df)[colnames(jhszn8_df)=="+/-+12"] <- "PM"
+
+jhszn8_df$WL <- substring(jhszn8_df$WL, 1,1)
+
+# converting variables to intergers
+ jhszn8_df$PTS <- as.numeric(as.character(jhszn8_df$PTS))
+  jhszn8_df$TRB <- as.numeric(as.character(jhszn8_df$TRB))
+ jhszn8_df$AST <- as.numeric(as.character(jhszn8_df$AST))
+ jhszn8_df$STL <- as.numeric(as.character(jhszn8_df$STL))
+ jhszn8_df$FTP <- as.numeric(as.character(jhszn8_df$FTP))
+ jhszn8_df$ThreeFGP <- as.numeric(as.character(jhszn8_df$ThreeFGP))
+ jhszn8_df$GmSc <- as.numeric(as.character(jhszn8_df$GmSc))
+ 
+
+# remove other unwanted varibles
+jhszn8_df  <-  jhszn8_df %>%
+  select(., -PF, -VS, -NANA, -TmDAL)
+
+# removing unwanted rows
+ldszn_df <- jhszn8_df[-c(21,27,28,29,30,42,50,51,52,53,54,55,56,59,63,64),]
+
+# convert date column to date class
+ ldszn_df$Dates <- as.Date(ldszn_df$Dates)
+ 
+  # reading in player image 
+ luka <- image_read("https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/3945274.png")
+
+## LEBRON JAMES 2020 SEASON
+
+# read in table
+jhszn4 <- read_html("https://www.basketball-reference.com/players/j/jamesle01/gamelog/2020") %>%
+  html_nodes("#pgl_basic") %>%
+  html_table(fill = TRUE)
+
+# making it into a datframe form one row
+jhszn4_df <- jhszn4[[1]]
+
+# flling in coloums names
+colnames(jhszn4_df) <- str_replace_all(string = paste0(names(jhszn4_df), jhszn4_df[1, ]), 
+                                             pattern = " ", replacement = "-")
+
+# clean up data by replacing "" with "0"
+jhszn4_df <- jhszn4_df %>%  
+  mutate_if(~ any(grep(pattern = "", x = .)), function(x){ifelse(x == "", 0, x)})
+
+# remove unwanted varibles
+jhszn4_df  <-  jhszn4_df %>%
+  select(., -Rk1, -G1, -`Age34-296`, -OppLAC,-GS1)
+
+# fix names of cloumns 
+colnames(jhszn4_df)[colnames(jhszn4_df)=="Date2019-10-22"] <- "Dates"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="GmSc11.6"] <- "GmSc"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="@"] <- "VS"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="L-(-10)"] <- "WL"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="MP36:00"] <- "MP"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="FG7"] <- "FG"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="FGA19"] <- "FGA"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="FG%.368"] <- "FGP"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="3P1"] <- "ThreeP"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="3PA5"] <- "ThreePA"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="3P%.200"] <- "ThreeFGP"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="FT3"] <- "FT"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="FTA4"] <- "FTA"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="FT%.750"] <- "FTP"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="ORB1"] <- "ORB"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="DRB9"] <- "DRB"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="TRB10"] <- "TRB"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="AST8"] <- "AST"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="STL1"] <- "STL"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="BLK1"] <- "BLK"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="TOV5"] <- "TOV"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="PF3"] <- "PF"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="PTS18"] <- "PTS"
+colnames(jhszn4_df)[colnames(jhszn4_df)=="+/--8"] <- "PM"
+
+jhszn4_df$WL <- substring(jhszn4_df$WL, 1,1)
+
+# converting variables to intergers
+jhszn4_df$PTS <- as.numeric(as.character(jhszn4_df$PTS))
+ jhszn4_df$TRB <- as.numeric(as.character(jhszn4_df$TRB))
+ jhszn4_df$AST <- as.numeric(as.character(jhszn4_df$AST))
+ jhszn4_df$STL <- as.numeric(as.character(jhszn4_df$STL))
+ jhszn4_df$FTP <- as.numeric(as.character(jhszn4_df$FTP))
+ jhszn4_df$ThreeFGP <- as.numeric(as.character(jhszn4_df$ThreeFGP))
+ jhszn4_df$GmSc <- as.numeric(as.character(jhszn4_df$GmSc))
+
+# remove other unwanted varibles
+jhszn4_df  <-  jhszn4_df %>%
+  select(., -PF, -VS, -NANA, -TmLAL)
+
+# removing unwanted rows
+ljszn_df <- jhszn4_df[-c(21,31,40,42,59),]
+
+# convert date column to date class
+ljszn_df$Dates <- as.Date(ljszn_df$Dates)
+
+lebron <- image_read("https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/1966.png")
+
+
+## GIANNIS ANTETOKOUNMPO 2020 SEASON
+
+# read in table
+jhszn5 <- read_html("https://www.basketball-reference.com/players/a/antetgi01/gamelog/2020") %>%
+  html_nodes("#pgl_basic") %>%
+  html_table(fill = TRUE)
+
+# making it into a datframe form one row
+jhszn5_df <- jhszn5[[1]]
+
+# flling in coloums names
+colnames(jhszn5_df) <- str_replace_all(string = paste0(names(jhszn5_df), jhszn5_df[1, ]), 
+                                             pattern = " ", replacement = "-")
+
+# clean up data by replacing "" with "0"
+jhszn5_df <- jhszn5_df %>%  
+  mutate_if(~ any(grep(pattern = "", x = .)), function(x){ifelse(x == "", 0, x)})
+
+# remove unwanted varibles
+jhszn5_df  <-  jhszn5_df %>%
+  select(., -Rk1, -G1, -`Age24-322`, -OppHOU,-GS1)
+
+# fix names of cloumns 
+colnames(jhszn5_df)[colnames(jhszn5_df)=="Date2019-10-24"] <- "Dates"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="GmSc28.4"] <- "GmSc"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="@"] <- "VS"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="W-(+6)"] <- "WL"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="MP28:10"] <- "MP"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="FG11"] <- "FG"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="FGA17"] <- "FGA"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="FG%.647"] <- "FGP"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="3P2"] <- "ThreeP"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="3PA5"] <- "ThreePA"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="3P%.400"] <- "ThreeFGP"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="FT6"] <- "FT"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="FTA11"] <- "FTA"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="FT%.545"] <- "FTP"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="ORB0"] <- "ORB"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="DRB13"] <- "DRB"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="TRB13"] <- "TRB"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="AST11"] <- "AST"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="STL1"] <- "STL"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="BLK1"] <- "BLK"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="TOV3"] <- "TOV"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="PF6"] <- "PF"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="PTS30"] <- "PTS"
+colnames(jhszn5_df)[colnames(jhszn5_df)=="+/-+8"] <- "PM"
+
+jhszn5_df$WL <- substring(jhszn5_df$WL, 1,1)
+
+# converting variables to intergers
+ jhszn5_df$PTS <- as.numeric(as.character(jhszn5_df$PTS))
+ jhszn5_df$TRB <- as.numeric(as.character(jhszn5_df$TRB))
+ jhszn5_df$AST <- as.numeric(as.character(jhszn5_df$AST))
+ jhszn5_df$STL <- as.numeric(as.character(jhszn5_df$STL))
+ jhszn5_df$FTP <- as.numeric(as.character(jhszn5_df$FTP))
+ jhszn5_df$ThreeFGP <- as.numeric(as.character(jhszn5_df$ThreeFGP))
+ jhszn5_df$GmSc <- as.numeric(as.character(jhszn5_df$GmSc))
+ 
+# remove other unwanted varibles
+jhszn5_df  <-  jhszn5_df %>%
+  select(., -PF, -VS, -NANA, -TmMIL)
+
+# removing unwanted rows
+gaszn_df <- jhszn5_df[-c(21,26,34,35,42,49,55,56),]
+
+# convert date column to date class
+gaszn_df$Dates <- as.Date(gaszn_df$Dates)
+
+# player picture
+giannis <- image_read("https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/3032977.png")
+
+
+# adding player names to data frames
+jhszn_df$Player <- 'James Harden'
+ljszn_df$Player <- 'Lebron James'
+ldszn_df$Player <- 'Luka Dončić'
+gaszn_df$Player <- 'Giannis Antetokounmpo'
+
+bind_rows(jhszn_df, ljszn_df, ldszn_df, gaszn_df) %>%
+  arrange(Dates) -> comp_mvp_df
+
+# Creating Season Average Table
+sznavg <- data.frame(Player = 'Lebron James',
+                      PPG = NA,
+                      RPG = NA,
+                      APG = NA,
+                      SPG = NA,
+                      FTP = NA,
+                      ThreeP = NA)
+
+sznavg1 <- data.frame(Player = 'James Harden',
+                      PPG = NA,
+                      RPG = NA,
+                      APG = NA,
+                      SPG = NA,
+                      FTP = NA,
+                      ThreeP = NA)
+
+sznavg2 <- data.frame(Player = 'Luka Dončić',
+                      PPG = NA,
+                      RPG = NA,
+                      APG = NA,
+                      SPG = NA,
+                      FTP = NA,
+                      ThreeP = NA)
+
+sznavg3 <- data.frame(Player = 'Giannis',
+                      PPG = NA,
+                      RPG = NA,
+                      APG = NA,
+                      SPG = NA,
+                      FTP = NA,
+                      ThreeP = NA)
+
+sznavg$PPG <- mean(ljszn_df$PTS)
+sznavg$RPG <- mean(ljszn_df$TRB)
+sznavg$APG <- mean(ljszn_df$AST)
+sznavg$SPG <- mean(ljszn_df$STL)
+sznavg$FTP <- mean(ljszn_df$FTP)
+sznavg$ThreeP <- mean(ljszn_df$ThreeFGP)
+
+sznavg1$PPG <- mean(jhszn_df$PTS)
+sznavg1$RPG <- mean(jhszn_df$TRB)
+sznavg1$APG <- mean(jhszn_df$AST)
+sznavg1$SPG <- mean(jhszn_df$STL)
+sznavg1$FTP <- mean(jhszn_df$FTP)
+sznavg1$ThreeP <- mean(jhszn_df$ThreeFGP)
+
+sznavg2$PPG <- mean(ldszn_df$PTS)
+sznavg2$RPG <- mean(ldszn_df$TRB)
+sznavg2$APG <- mean(ldszn_df$AST)
+sznavg2$SPG <- mean(ldszn_df$STL)
+sznavg2$FTP <- mean(ldszn_df$FTP)
+sznavg2$ThreeP <- mean(ldszn_df$ThreeFGP)
+
+sznavg3$PPG <- mean(gaszn_df$PTS)
+sznavg3$RPG <- mean(gaszn_df$TRB)
+sznavg3$APG <- mean(gaszn_df$AST)
+sznavg3$SPG <- mean(gaszn_df$STL)
+sznavg3$FTP <- mean(gaszn_df$FTP)
+sznavg3$ThreeP <- mean(gaszn_df$ThreeFGP)
+
+bind_rows(sznavg, sznavg1, sznavg2, sznavg3) -> mvpsznavg_df
+
+format(mvpsznavg_df, digits = 3) -> mvpsznavg_df
+
+```
+
+
+### This table displays the season statisics for the top 4 mvp candidates in the 2020 NBA season.
+
+```{r eda1}
+# Table of Season Statistics for Each MVP 
+mvptable <- plot_ly(
+  type = 'table',
+   columnwidth = c(0,400),
+  header = list(
+    values = c("<b>Players</b>", names(mvpsznavg_df)),
+  align = c('left', rep('center', ncol(mvpsznavg_df))),
+  line = list(width = 1, color = 'black'),
+  fill = list(color = 'rgb(235, 100, 230)'),
+  font = list(family = "Arial", size = 14, color = "white")
+  ),
+  cells = list(
+    values = rbind(
+      rownames(mvpsznavg_df), 
+      t(as.matrix(unname(mvpsznavg_df)))
+    ),
+    align = c('left', rep('center', ncol(mvpsznavg_df))),
+    line = list(color = "black", width = 1),
+    fill = list(color = c('rgb(235, 193, 238)', 'rgba(228, 222, 249, 0.65)')),
+    font = list(family = "Arial", size = 15, color = c("black")),
+    height = 30
+  ))
+
+mvptable
+```
+
+==========================
+
+Inputs {.sidebar}
+--------------------------
+
+```{r}
+inputPanel(
+  
+  selectInput(inputId = "Player",
+              label = "Player",
+              choices = comp_mvp_df$Player,
+              multiple = TRUE,
+              selected = "James Harden")
+  
+)
+```
+
+Row 
+-----------------------------------
+
+### This Scatter Plot displays the scoring of each MVP candiatediate in each game this season. Each point also gives the indivudla players rebounds, assist, steals, minutes and turnovers in that given game.
+
+```{r eda2}
+# Scatter Plots of Game Log
+
+renderPlotly({
+  
+  scoringplot <- comp_mvp_df%>%
+      filter(Player %in% input$Player) %>%
+   plot_ly(., x = ~Dates, y = ~PTS, type = 'scatter', mode = 'lines', linetype = ~Player, text = ~paste("Player:",Player,"<br>Points:",PTS,"<br>Rebounds:", TRB, "<br>Assist:", AST, "<br>Steals:", STL, "<br>Tunovers:", TOV, "<br>Minutes:", MP, "<br>Plus/Minus:", PM)
+           )
+  
+  
+  scoringplot
+
+})
+```
+
+
+Players Plots (James Harden)
+==========================
+
+### Season Stats: 34.9 points, 6.4 rebounds, 7.3 assists, 1.7 steals
+
+Row {data-width=550}
+-----------------------------------------------------------------------
+
+
+
+```{r}
+rast <- grid::rasterGrob(harden, interpolate = TRUE)
+rast2 <- grid::rasterGrob(giannis, interpolate = TRUE)
+rast3 <- grid::rasterGrob(lebron, interpolate = TRUE)
+rast4 <- grid::rasterGrob(luka, interpolate = TRUE)
+
+ggplot(data = jhszn_df, aes(x = PTS, y = TRB, colour = AST)) +
+  geom_point() +
+  annotation_custom(rast, ymin = 1, ymax = 3, xmin = 50, xmax = 60) +
+  ggtitle("James Harden 2020 Season Breakdown")
+```
+
+
+```{r}
+DT::renderDataTable({
+  
+  jhszn_df %>%
+    dplyr::filter(PTS >= 10) %>%
+     dplyr::filter(AST >= 10) %>%
+     dplyr::filter(TRB >= 10) %>%
+    DT::datatable(., caption = 'This Table Displays the Games James Harden Had a Triple Double')
+
+  
+})
+```
+
+
+Players Plots (Giannis)
+==========================
+
+### Season Stats: 29.9 points, 13.8 rebounds, 5.8 assists, 1.1 steals, 1.1 blocks
+
+Row {data-width=550}
+-----------------------------------------------------------------------
+
+
+
+
+```{r}
+ggplot(data = gaszn_df, aes(x = PTS, y = TRB, colour = AST)) +
+  geom_point() +
+  annotation_custom(rast2, ymin = 5, ymax = 10, xmin = 40, xmax = 50) +
+  ggtitle("Giannis Antetokounmpo 2020 Season Breakdown")
+
+```
+
+
+```{r}
+DT::renderDataTable({
+  
+  gaszn_df %>%
+    dplyr::filter(PTS >= 10) %>%
+     dplyr::filter(AST >= 10) %>%
+     dplyr::filter(TRB >= 10) %>%
+    DT::datatable(., caption = 'This Table Displays the Games Giannis Antetokounmpo Had a Triple Double')
+
+  
+})
+```
+
+
+
+
+Players Plots (Lebron James)
+==========================
+
+
+### Season Stats: 25.5 points, 7.8 rebounds, 10.6 assists, 1.2 steals
+
+
+Row {data-width=550}
+-----------------------------------------------------------------------
+
+
+
+```{r}
+ggplot(data = ljszn_df, aes(x = PTS, y = TRB, colour = AST)) +
+  geom_point() +
+  annotation_custom(rast3, ymin = 1, ymax = 3, xmin = 30, xmax = 40) +
+  ggtitle("Lebron James 2020 Season Breakdown")
+```
+
+
+```{r}
+DT::renderDataTable({
+  
+  ljszn_df %>%
+    dplyr::filter(PTS >= 10) %>%
+     dplyr::filter(AST >= 10) %>%
+     dplyr::filter(TRB >= 10) %>%
+    DT::datatable(., caption = 'This Table Displays the Games Lebron James Had a Triple Double')
+
+  
+})
+```
+
+### 
+
+Players Plots (Luka)
+==========================
+
+
+### Season Stats: 28.6 points, 9.4 rebounds, 8.7 assists, 1.0 steals
+
+
+Row {data-width=550}
+-----------------------------------------------------------------------
+
+
+
+```{r}
+ggplot(data = ldszn_df, aes(x = PTS, y = TRB, colour = AST)) +
+  geom_point() +
+  annotation_custom(rast4, ymin = 1, ymax = 3, xmin = 30, xmax = 40) + 
+  ggtitle("Luka Dončić 2020 Season Breakdown")
+ 
+
+
+```
+
+
+```{r}
+DT::renderDataTable({
+  
+  ldszn_df %>%
+    dplyr::filter(PTS >= 10) %>%
+     dplyr::filter(AST >= 10) %>%
+     dplyr::filter(TRB >= 10) %>%
+    DT::datatable(., caption = 'This Table Displays the Games Luka Dončić Had a Triple Double')
+
+  
+})
+```
+
+
+Game Score
+==========================
+
+### Game Score(GmSc); was created by John Hollinger to give a rough measure of a player's productivity for a single game The scale is similar to that of points scored, (40 is an outstanding performance, 10 is an average performance, etc.)  (PTS + 0.4 * FG - 0.7 * FGA - 0.4*(FTA - FT) + 0.7 * ORB + 0.3 * DRB + STL + 0.7 * AST + 0.7 * BLK - 0.4 * PF - TOV). 
+
+Row
+--------------------------------------------------------------------
+
+
+
+```{r}
+ggplot(comp_mvp_df, aes(y=GmSc, x=Player, color = Player)) +
+  geom_boxplot(outlier.colour= NA) +
+  geom_jitter(position=position_jitter(width=.25))  +
+  theme(legend.position='none') + labs(x=NULL, y='Game Score') +
+  ggtitle("Game Score Comparison")
+
+```
+
+
+```{r}
+ggplot(comp_mvp_df, aes(y=GmSc, x=WL, color = Player)) + geom_boxplot(outlier.colour= NA) + 
+  geom_jitter(position=position_jitter(width=.25)) + facet_wrap(~Player)  + theme(legend.position='none') + labs(y='Game Score') +
+ggtitle("Game Score Comparison by Wins and Loses")
+
+```
